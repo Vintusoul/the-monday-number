@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A short narrated case study on why product engineers still matter when AI writes the code.">
+<meta property="og:title" content="The Monday Number">
+<meta property="og:description" content="A short narrated case study on why product engineers still matter when AI writes the code.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1F2630">
+<title>The Monday Number</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a one-screen guided player. Ten scenes, one idea each, auto-advancing like a video, with one flat
+   illustration per scene. Palette and mono headings follow the author's GitHub profile: one committed night
+   look. The profile's meadow, daisies and dog appear once, on the closing card. */
+:root{
+  --bg:#1F2630; --surface:#2A3342; --ink:#F2F5F8; --muted:#9BA6B5; --line:#3B4658; --seg:#4A566A;
+  --accent:#7CCB80; --hl:#2F8037; --hl-ink:#FFFFFF;
+  --petal:#FFFFFF; --pollen:#F2B632; --dog:#C8662E; --dog-dark:#8E4219; --nose:#1B1410;
+  --display:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:1.0625rem;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-underline-offset:.18em}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+p,h1,h2,ol,ul{margin:0}
+.mono{font-family:var(--mono);font-size:.8rem;letter-spacing:.01em;text-transform:lowercase;color:var(--muted)}
+.petal{fill:var(--petal)} .pollen{fill:var(--pollen)} .dg{fill:var(--dog)} .dg-d{fill:var(--dog-dark)} .dk{fill:var(--nose)}
+
+.player{height:100%;max-width:78rem;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+
+/* Top: story-style progress */
+.top{padding-block:.9rem .4rem;display:flex;flex-direction:column;gap:.55rem}
+.segs{display:flex;gap:5px}
+.segs button{flex:1;min-width:0;height:2rem;padding:0;border:0;background:none;cursor:pointer;display:flex;align-items:center}
+.segs i{display:block;position:relative;width:100%;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.segs b{position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left}
+.meta{display:flex;justify-content:space-between;gap:1rem}
+.meta .mono{white-space:nowrap}
+@media (max-width:520px){ .meta .mono{font-size:.7rem} }
+
+/* Stage */
+.stage{display:grid;min-height:0;overflow-y:auto;overflow-x:hidden}
+.scene{margin-block:auto;padding-block:1.25rem;display:grid;grid-template-columns:minmax(0,1fr);gap:1.75rem 4rem;align-items:center}
+.player.js .scene{grid-area:1/1}
+@media (min-width:860px){ .scene{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)} }
+.copy{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
+.copy h1,.copy h2{font-family:var(--display);font-weight:700;letter-spacing:-.03em;line-height:1.12;text-wrap:balance;font-size:clamp(1.5rem,3.3vw,2.85rem)}
+.copy h1{font-weight:800;font-size:clamp(2.3rem,6.4vw,5rem);line-height:1;text-transform:lowercase}
+.copy p{font-size:clamp(1.02rem,1.45vw,1.2rem);max-width:34rem}
+.copy .src{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.copy .sign{font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+.words .w{display:inline-block}
+
+.hl,.mark{background-image:linear-gradient(var(--hl),var(--hl));background-repeat:no-repeat;background-size:100% 100%;color:var(--hl-ink);padding:0 .12em;margin:0 -.06em;border-radius:.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.player.js .hl,.player.js .mark{background-size:0% 100%;color:inherit}
+.player.js .scene.on .hl,.player.js .scene.on .mark{background-size:100% 100%;color:var(--hl-ink);transition:background-size .6s cubic-bezier(.2,.7,.2,1) var(--d,.9s),color .3s var(--d,.9s)}
+
+/* Illustrations */
+.art{min-width:0;display:flex;justify-content:center}
+.art svg.ill{display:block;width:100%;max-width:27rem;height:auto;max-height:46vh;overflow:visible}
+@media (max-width:859px){ .art{order:-1} .art svg.ill{max-height:30vh} .scene{gap:1.25rem} }
+[data-a]{transform-box:fill-box;transform-origin:center}
+[data-a="grow"]{transform-origin:left center}
+.unused{opacity:.22}
+.s{stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.f-none{fill:none}.f-surface{fill:var(--surface)}.f-ink{fill:var(--ink)}.f-hl{fill:var(--hl)}.f-acc{fill:var(--accent)}.f-seg{fill:var(--seg)}.f-line{fill:var(--line)}.f-dog{fill:var(--dog)}
+.art text{font-family:var(--display);font-weight:700;fill:var(--ink)}
+.art text.on-hl{fill:var(--hl-ink)} .art text.on-ink{fill:var(--bg)} .art text.dim{fill:var(--muted)}
+.art text.m{font-weight:500;fill:var(--muted)}
+
+.card{position:relative;width:100%;max-width:27rem;background:var(--surface);border:1.5px solid var(--ink);border-radius:8px;padding:1.2rem;display:flex;flex-direction:column;gap:.9rem}
+.msg{font-size:clamp(1.05rem,1.7vw,1.28rem);line-height:1.5;font-weight:500}
+.card .row{display:flex;flex-wrap:wrap;align-items:center;gap:.9rem}
+.stamp{position:relative;font-family:var(--mono);font-weight:500;font-size:.85rem;text-transform:lowercase;color:var(--muted);border:2px solid var(--muted);border-radius:4px;padding:.2rem .55rem;transform:rotate(-4deg)}
+.stamp::after{content:"";position:absolute;left:-8%;right:-8%;top:calc(50% - 1.5px);height:3px;background:var(--dog);transform-origin:left}
+.player.js .stamp::after{transform:scaleX(0)}
+.player.js .scene.on .stamp::after{transform:scaleX(1);transition:transform .35s ease-out 3.1s}
+.flag{background:var(--hl);color:var(--hl-ink);font-weight:600;font-size:.95rem;padding:.2rem .55rem;border-radius:4px}
+.ladder{list-style:none;padding:0;display:flex;flex-direction:column;gap:.55rem;width:100%;max-width:27rem}
+.ladder li{position:relative;border-left:3px solid var(--line);padding:.25rem 2.6rem .25rem .85rem;font-weight:500;font-size:clamp(.98rem,1.4vw,1.1rem)}
+.ladder li b{display:block;font:500 .72rem var(--mono);text-transform:lowercase;color:var(--muted)}
+.ladder li:nth-child(2){margin-left:1rem}.ladder li:nth-child(3){margin-left:2rem}.ladder li:nth-child(4){margin-left:3rem}
+.ladder li:last-child{border-left-color:var(--accent);border-left-width:5px}
+
+/* Controls */
+.bar{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;padding-block:.8rem 1rem;border-top:1px solid var(--line)}
+.btn{font:600 .92rem var(--body);color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:6px;padding:.5rem .95rem;min-height:44px;cursor:pointer}
+.btn:hover:not(:disabled){background:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.main{background:var(--hl);border-color:var(--hl);color:var(--hl-ink);min-width:5.6rem}
+.btn.main:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:var(--bg)}
+#next{margin-right:auto}
+.mix{display:flex;align-items:center;gap:1.1rem;min-width:0}
+.mix label{display:flex;align-items:center;gap:.5rem;min-width:0;font-family:var(--mono);font-size:.76rem;text-transform:lowercase;color:var(--muted)}
+.mix input{width:7rem;min-width:0;height:44px;margin:0;accent-color:var(--accent);cursor:pointer}
+@media (max-width:520px){ .bar{gap:.2rem .4rem;padding-block:.6rem .7rem} .bar .btn{flex:1 1 0;min-width:0;padding-inline:.3rem;font-size:.85rem} #next{margin-right:0} .mix{flex:1 1 100%} .mix label{flex:1 1 0} .mix input{flex:1 1 0;width:auto;height:36px} .art svg.ill{max-height:27vh} }
+
+/* Closing card: the meadow takes over the screen */
+.scene.finale{position:relative;overflow:hidden;margin:.5rem 0;align-self:stretch;align-content:center;grid-template-columns:minmax(0,1fr);background:var(--hl);color:var(--hl-ink);border-radius:14px;padding:clamp(1.5rem,5vw,4.5rem);padding-bottom:clamp(5rem,14vh,8rem)}
+.finale .copy{position:relative;z-index:1;gap:1.3rem}
+.finale .copy h2{font-weight:800;font-size:clamp(1.9rem,6.2vw,4.8rem);line-height:1.02;max-width:14ch;overflow-wrap:anywhere}
+.finale .copy .src,.finale .copy .src a{color:var(--hl-ink)}
+.finale .btn{color:var(--hl-ink);border-color:var(--hl-ink)}
+.finale .btn:hover:not(:disabled){background:var(--hl-ink);color:var(--hl)}
+.bloom{position:absolute;inset:0;pointer-events:none}
+.bloom .d{position:absolute;overflow:visible;transform:translate(-50%,-50%)}
+.bloom .run{position:absolute;left:62%;bottom:5%;width:clamp(84px,12vw,132px);overflow:visible}
+/* Cover: the story opens out of the same meadow it returns to */
+.cover{position:relative;z-index:2;overflow:hidden;margin:.5rem 0;display:grid;align-content:center;background:var(--hl);color:var(--hl-ink);border-radius:14px;padding:clamp(1.5rem,5vw,4.5rem);padding-bottom:clamp(5rem,14vh,8rem)}
+.player.js .cover{grid-area:1/1}
+.cover .copy{position:relative;z-index:1;gap:1.2rem}
+.cover .copy h1{font-size:clamp(2.4rem,8vw,6rem);line-height:.98;max-width:12ch}
+.cover .copy p{font-size:clamp(1.05rem,1.8vw,1.4rem);max-width:30rem}
+.cover .copy .mono{font-size:.85rem;color:var(--hl-ink)}
+.cover .copy .src{font-size:.78rem;color:var(--hl-ink)}
+.cover .btn{background:var(--hl-ink);border-color:var(--hl-ink);color:var(--hl);font-size:1.05rem;padding:.7rem 1.5rem}
+.cover .btn:hover:not(:disabled){background:var(--bg);border-color:var(--bg);color:var(--ink)}
+.cover .run{animation:bob 1.4s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+@media (prefers-reduced-motion: reduce){ .cover .run{animation:none} }
+@media (prefers-reduced-motion: reduce){ .player.js .scene.on .hl,.player.js .scene.on .mark{transition:none} }
+</style>
+<style>body{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="daisy" viewBox="-12 -12 24 24">
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(45)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(90)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(135)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(180)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(225)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(270)"/>
+    <ellipse class="petal" cx="0" cy="-7" rx="3" ry="5" transform="rotate(315)"/>
+    <circle class="pollen" r="3.7"/>
+  </symbol>
+  <symbol id="dog" viewBox="0 0 124 62">
+    <rect class="dg" x="6" y="20" width="24" height="5.5" rx="2.75" transform="rotate(-28 27 26)"/>
+    <rect class="dg-d" x="30" y="36" width="7.5" height="18" rx="3.75" transform="rotate(32 33 38)"/>
+    <rect class="dg-d" x="80" y="36" width="7.5" height="18" rx="3.75" transform="rotate(-38 84 38)"/>
+    <rect class="dg" x="22" y="22" width="70" height="19" rx="9.5"/>
+    <ellipse class="dg" cx="98" cy="23" rx="13" ry="10.5"/>
+    <rect class="dg" x="100" y="21" width="20" height="9.5" rx="4.75"/>
+    <ellipse class="dg-d" cx="92" cy="27" rx="6" ry="11" transform="rotate(14 92 20)"/>
+    <circle class="dk" cx="119" cy="24" r="2.6"/>
+    <circle class="dk" cx="101.5" cy="19" r="1.7"/>
+  </symbol>
+</svg>
+
+<main class="player" id="player">
+  <div class="top">
+    <div class="segs" id="segs"></div>
+    <div class="meta"><span class="mono">Illustrative case</span><span class="mono" id="chapter"></span></div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <section class="cover" id="cover">
+      <div class="bloom" aria-hidden="true">
+        <svg class="run" id="run-in" viewBox="0 0 124 62"><use href="#dog"/></svg>
+      </div>
+      <div class="copy">
+        <p class="mono">A case study</p>
+        <h1 class="words">The Monday Number</h1>
+        <p>Why product engineers still matter when AI writes the code.</p>
+        <div><button type="button" class="btn" id="begin">Play the story</button></div>
+        <p class="src">Under two minutes, with narration and sound.</p>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="7" data-name="The case">
+      <div class="copy">
+        <h2>A client asked for more charts.</h2>
+        <p>What they needed, they never said. This is a short case for why product engineers still matter when AI writes the code.</p>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="A calendar page showing Monday, 8am">
+          <rect x="70" y="44" width="260" height="236" rx="12" class="f-surface s"/>
+          <rect x="70" y="44" width="260" height="56" rx="12" class="f-ink"/>
+          <rect x="70" y="80" width="260" height="20" class="f-ink"/>
+          <text x="200" y="83" text-anchor="middle" font-size="28" class="on-ink">MON</text>
+          <rect data-a="grow" data-d="2.3" x="100" y="150" width="200" height="78" rx="6" class="f-hl"/>
+          <text data-a="clock" x="200" y="209" text-anchor="middle" font-size="56" class="on-hl">08:00</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="7" data-phase="observe" data-name="The ask">
+      <div class="copy">
+        <h2>“We need more value from the dashboard.”</h2>
+        <p>That was the whole brief. The client knew something was missing and couldn't name it.</p>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="A dashboard of charts with a speech bubble asking for more value.">
+          <rect x="40" y="96" width="320" height="204" rx="10" class="f-surface s"/>
+          <g data-a="rise"><rect x="60" y="116" width="130" height="76" rx="5" class="f-line"/><rect x="76" y="156" width="18" height="24" class="f-ink"/><rect x="102" y="140" width="18" height="40" class="f-ink"/><rect x="128" y="128" width="18" height="52" class="f-ink"/></g>
+          <g data-a="rise"><rect x="210" y="116" width="130" height="76" rx="5" class="f-line"/><polyline points="224,176 252,150 280,162 324,130" class="f-none s"/></g>
+          <g data-a="rise"><rect x="60" y="206" width="130" height="76" rx="5" class="f-line"/><circle cx="125" cy="244" r="24" class="f-none s"/></g>
+          <g data-a="rise"><rect x="210" y="206" width="130" height="76" rx="5" class="f-line"/><rect x="226" y="224" width="98" height="8" class="f-ink"/><rect x="226" y="242" width="70" height="8" class="f-ink"/><rect x="226" y="260" width="84" height="8" class="f-ink"/></g>
+          <g data-a="pop"><rect x="150" y="18" width="226" height="56" rx="12" class="f-hl"/><polygon points="196,72 222,72 200,94" class="f-hl"/><text x="263" y="54" text-anchor="middle" font-size="22" class="on-hl">More value?</text></g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="8" data-phase="observe" data-name="The easy answer">
+      <div class="copy">
+        <h2>The easy answer was more charts.</h2>
+        <p>AI could have built them in an afternoon. Most would have gone unopened: <strong><span class="num" data-count="80">80</span>%</strong> of features in the average software product are rarely or never used.</p>
+        <a class="src" href="https://www.pendo.io/resources/the-2019-feature-adoption-report/" target="_blank" rel="noopener">Pendo Feature Adoption Report, 2019</a>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="Ten feature tiles. Eight fade out as unused and two stay lit.">
+          <rect data-a="pop" x="26" y="70" width="60" height="60" rx="8" class="f-acc"/>
+          <rect data-a="popdim" x="98" y="70" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="170" y="70" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="242" y="70" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="314" y="70" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="26" y="142" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="98" y="142" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="pop" x="170" y="142" width="60" height="60" rx="8" class="f-acc"/>
+          <rect data-a="popdim" x="242" y="142" width="60" height="60" rx="8" class="f-acc unused"/>
+          <rect data-a="popdim" x="314" y="142" width="60" height="60" rx="8" class="f-acc unused"/>
+          <text data-a="fade" data-d="4.3" x="26" y="252" font-size="24">2 in 10 get used</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="9" data-phase="observe" data-name="The signal">
+      <div class="copy">
+        <h2>Then a support ticket came in.</h2>
+        <p>The system filed it as resolved. I read it as a warning from someone who had stopped expecting a fix.</p>
+      </div>
+      <div class="art">
+        <div class="card">
+          <span class="mono">Support ticket</span>
+          <p class="msg"><span class="mark" style="--d:1.7s">Third time</span> the export has failed this week. Fine. <span class="mark" style="--d:2.4s">I'll just do it manually.</span> Thanks anyway.</p>
+          <div class="row"><span class="stamp" data-a="pop">Resolved</span><span class="flag" data-a="pop" data-d="3.6">Churn risk</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="10" data-step="1.1" data-phase="observe" data-name="The dig">
+      <div class="copy">
+        <h2>So I asked why. Four times.</h2>
+        <p>Each answer moved further from the dashboard and closer to one person's week.</p>
+      </div>
+      <div class="art">
+        <ol class="ladder">
+          <li data-a="rise" data-s="step"><b>Why?</b>The reports take too long to get anything out of.</li>
+          <li data-a="rise" data-s="step"><b>Why?</b>I rebuild the same four numbers every Monday.</li>
+          <li data-a="rise" data-s="step"><b>Why?</b>The board meets at ten and asks what changed.</li>
+          <li data-a="rise" data-s="step"><b>Why?</b>I need to walk in already knowing the answer.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="8" data-step="0.35" data-phase="model" data-name="The need">
+      <div class="copy">
+        <h2>One number, before the 10am board meeting.</h2>
+        <p>The dashboard already held the data. The client needed the answer waiting in their inbox on Monday, without rebuilding it by hand.</p>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="A crowded dashboard becomes a single Monday morning summary">
+          <g data-a="fade">
+            <rect x="16" y="100" width="134" height="124" rx="8" class="f-surface s"/>
+            <rect x="28" y="112" width="50" height="44" rx="4" class="f-line"/><rect x="88" y="112" width="50" height="44" rx="4" class="f-line"/>
+            <rect x="28" y="166" width="50" height="44" rx="4" class="f-line"/><rect x="88" y="166" width="50" height="44" rx="4" class="f-line"/>
+          </g>
+          <g data-a="fade"><line x1="166" y1="162" x2="206" y2="162" class="s"/><polygon points="206,152 222,162 206,172" class="f-ink"/></g>
+          <g data-a="pop">
+            <rect x="236" y="62" width="150" height="200" rx="10" class="f-surface s"/>
+            <text x="252" y="94" font-size="12" class="m">mon 08:00</text>
+            <text x="252" y="124" font-size="15">What changed</text>
+          </g>
+          <rect data-a="grow" x="252" y="142" width="118" height="40" rx="5" class="f-hl"/>
+          <g data-a="fade"><rect x="252" y="200" width="104" height="9" rx="4" class="f-line"/><rect x="252" y="220" width="72" height="9" rx="4" class="f-line"/></g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="8" data-step="0.3" data-phase="simplify · ship" data-name="The build">
+      <div class="copy">
+        <h2>AI wrote most of the code. The conversation decided what to build.</h2>
+        <p>In this case the Monday spreadsheet was retired and the dashboard stayed as it was.</p>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="AI fills a code window with lines. I choose the path: one number, with more charts crossed out.">
+          <text x="16" y="52" font-size="22">AI</text>
+          <rect x="16" y="68" width="164" height="204" rx="10" class="f-surface s"/>
+          <rect data-a="grow" data-s="type" x="32" y="92" width="96" height="9" rx="4" class="f-ink"/>
+          <rect data-a="grow" data-s="type" x="46" y="114" width="112" height="9" rx="4" class="f-line"/>
+          <rect data-a="grow" data-s="type" x="46" y="136" width="78" height="9" rx="4" class="f-line"/>
+          <rect data-a="grow" data-s="type" x="46" y="158" width="100" height="9" rx="4" class="f-line"/>
+          <rect data-a="grow" data-s="type" x="32" y="180" width="60" height="9" rx="4" class="f-ink"/>
+          <rect data-a="grow" data-s="type" x="46" y="202" width="104" height="9" rx="4" class="f-line"/>
+          <rect data-a="grow" data-s="type" x="46" y="224" width="70" height="9" rx="4" class="f-line"/>
+          <text x="214" y="52" font-size="22">Me</text>
+          <g data-a="fade" data-d="2.9">
+            <line x1="214" y1="170" x2="258" y2="170" class="s"/>
+            <line x1="258" y1="170" x2="312" y2="116" class="s" stroke-dasharray="4 8"/>
+            <circle cx="318" cy="110" r="8" class="f-line s"/>
+            <text x="318" y="88" text-anchor="middle" font-size="13" class="m">more charts</text>
+            <line x1="268" y1="84" x2="368" y2="84" class="s"/>
+            <line x1="258" y1="170" x2="308" y2="220" class="s"/>
+          </g>
+          <circle data-a="pop" data-d="3.7" data-s="chime" cx="320" cy="232" r="14" class="f-acc"/>
+          <text data-a="fade" data-d="4.0" x="322" y="284" text-anchor="middle" font-size="13" class="m">one number</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="9" data-name="The pattern">
+      <div class="copy">
+        <h2><span class="num" data-count="74">74</span>% of companies have yet to show tangible value from AI.</h2>
+        <p>The same study puts around 70% of the obstacles down to people and process. That gap closes when someone understands how the business runs.</p>
+        <a class="src" href="https://www.bcg.com/press/24october2024-ai-adoption-in-2024-74-of-companies-struggle-to-achieve-and-scale-value" target="_blank" rel="noopener">BCG, Where's the Value in AI?, 2024</a>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="A bar showing 70 percent of AI obstacles are people and process, 30 percent technology and algorithms">
+          <text x="30" y="96" font-size="42">70%</text>
+          <text x="30" y="122" font-size="13" class="m">people and process</text>
+          <rect x="30" y="140" width="340" height="64" rx="8" class="f-seg"/>
+          <rect data-a="grow" x="30" y="140" width="238" height="64" rx="8" class="f-hl"/>
+          <text x="370" y="232" text-anchor="end" font-size="13" class="m">30% technology and algorithms</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="8" data-name="The standard">
+      <div class="copy">
+        <h2><span class="num" data-count="66">66</span>% of developers are frustrated by AI answers that are almost right.</h2>
+        <p>Someone has to know what right looks like. That knowledge comes from the user and the business, and no tool hands it to you.</p>
+        <a class="src" href="https://survey.stackoverflow.co/2025/ai" target="_blank" rel="noopener">Stack Overflow Developer Survey, 2025</a>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="A target. Several shots miss and one lands just beside it, labelled almost.">
+          <circle cx="200" cy="160" r="128" class="f-surface s"/>
+          <circle cx="200" cy="160" r="88" class="f-surface s"/>
+          <circle cx="200" cy="160" r="48" class="f-surface s"/>
+          <circle cx="200" cy="160" r="12" class="f-ink"/>
+          <circle data-a="pop" cx="90" cy="96" r="9" class="f-line s"/>
+          <circle data-a="pop" cx="286" cy="236" r="9" class="f-line s"/>
+          <circle data-a="pop" cx="150" cy="214" r="9" class="f-line s"/>
+          <circle data-a="pop" data-d="1.6" cx="238" cy="130" r="13" class="f-dog"/>
+          <text data-a="fade" data-d="2.1" x="258" y="118" font-size="20">almost</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene" data-dur="6.5" data-name="The point">
+      <div class="copy">
+        <h2>AI builds what you ask for. A product engineer finds out <span class="hl">what to ask.</span></h2>
+      </div>
+      <div class="art">
+        <svg class="ill" viewBox="0 0 400 320" role="img" aria-label="The vague request, More value?, fades beside a sharper question: Why Monday?">
+          <g data-a="rise">
+            <rect x="24" y="30" width="214" height="62" rx="12" class="f-line"/>
+            <polygon points="60,91 88,91 64,114" class="f-line"/>
+            <text x="131" y="69" text-anchor="middle" font-size="21" class="dim">More value?</text>
+          </g>
+          <g data-a="pop" data-d="1.7">
+            <rect x="112" y="136" width="268" height="78" rx="12" class="f-hl"/>
+            <polygon points="296,212 328,212 322,240" class="f-hl"/>
+            <text x="246" y="186" text-anchor="middle" font-size="29" class="on-hl">Why Monday?</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="scene finale" data-dur="9" data-name="The takeaway">
+      <div class="bloom" id="bloom" aria-hidden="true">
+        <svg class="run" id="run" viewBox="0 0 124 62"><use href="#dog"/></svg>
+      </div>
+      <div class="copy">
+        <h2 class="words" data-s="tok">Understanding people is still the job.</h2>
+        <p class="sign">Christelle Zeederberg, product engineer</p>
+        <div><button type="button" class="btn" id="again">Watch again</button></div>
+        <p class="src">The case is illustrative. The statistics are real:
+          <a href="https://www.pendo.io/resources/the-2019-feature-adoption-report/" target="_blank" rel="noopener">Pendo 2019</a>,
+          <a href="https://www.bcg.com/press/24october2024-ai-adoption-in-2024-74-of-companies-struggle-to-achieve-and-scale-value" target="_blank" rel="noopener">BCG 2024</a>,
+          <a href="https://survey.stackoverflow.co/2025/ai" target="_blank" rel="noopener">Stack Overflow 2025</a>. Built with Motion. Narration generated with ElevenLabs.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="bar" id="bar" hidden>
+    <button type="button" class="btn" id="back">Back</button>
+    <button type="button" class="btn main" id="play">Play</button>
+    <button type="button" class="btn" id="next">Next</button>
+    <div class="mix">
+      <label id="voice-wrap" hidden><span>Voice</span><input type="range" id="voice" min="0" max="100" step="1" value="40" aria-label="Narration volume"></label>
+      <label id="sfx-wrap"><span>Sound</span><input type="range" id="sfx" min="0" max="100" step="1" value="100" aria-label="Sound effects volume"></label>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/motion@12.23.24/dist/motion.js"></script>
+<script>
+(function(){
+  var M = window.Motion || null;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var still = /[?&]still\b/.test(location.search);   // ?still shows every scene at rest, for screenshots
+  var live = !!M && !reduce && !still;           // animations, autoplay and sound effects need Motion
+  var $ = function(s, r){ return (r || document).querySelector(s); };
+  var $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var ease = [0.2, 0.7, 0.2, 1];
+  function anim(t, k, o){ if(!live) return null; try { return M.animate(t, k, o || {}); } catch(e){ return null; } }
+  var DAISY = '<svg viewBox="-12 -12 24 24" aria-hidden="true"><use href="#daisy" x="-12" y="-12" width="24" height="24"/></svg>';
+
+  var player = $('#player'), scenes = $$('.scene'), n = scenes.length;
+  var segs = $('#segs'), back = $('#back'), next = $('#next'), play = $('#play'), again = $('#again');
+  var idx = -1, token = 0, timer = null, playing = false, ended = false, started = false, fresh = true, idle = null, leadT = null;
+  var CLIPS = 10;                                // narrated scenes; the closing card plays without voice
+
+  player.classList.add('js');
+  $('#bar').hidden = false;
+  if(!live) play.hidden = true;
+
+  /* Split marked headings into words so they can arrive one at a time */
+  $$('.words').forEach(function(h){
+    var words = h.textContent.trim().split(/\s+/);
+    h.textContent = '';
+    words.forEach(function(w, i){
+      var s = document.createElement('span');
+      s.className = 'w'; s.textContent = w;
+      h.appendChild(s);
+      if(i < words.length - 1) h.appendChild(document.createTextNode(' '));
+    });
+  });
+
+  /* The closing card's meadow: daisies along the bottom and lower right, clear of the text */
+  $$('.bloom').forEach(function(bloom){
+  [[6,86,26],[16,94,18],[27,85,32],[38,93,20],[49,87,28],[60,94,18],[71,84,36],[81,92,22],[91,85,30],[96,70,22],[87,66,32],[94,52,22]].forEach(function(d, k){
+    var s = document.createElement('div');
+    s.className = 'd'; s.innerHTML = DAISY;
+    s.style.cssText = 'left:' + d[0] + '%;top:' + d[1] + '%;width:' + d[2] + 'px;height:' + d[2] + 'px';
+    s.setAttribute('data-a', 'pop'); s.setAttribute('data-d', (1.3 + k * 0.11).toFixed(2));
+    bloom.insertBefore(s, bloom.firstChild);
+  });
+  });
+
+  /* ---------- Narration: one clip per scene in audio/s01.mp3 to s10.mp3; silent if missing ---------- */
+  var voiceIn = $('#voice'), sfxIn = $('#sfx'), voiceVol = 0.4, sfxVol = 1, hasAudio = false;
+  var clips = [];
+  for(var c = 0; c < CLIPS; c++){
+    var a = new Audio();
+    a.preload = 'auto';
+    a.src = 'audio/s' + (c < 9 ? '0' : '') + (c + 1) + '.mp3';
+    clips.push(a);
+  }
+  clips[0].addEventListener('loadedmetadata', function(){ hasAudio = true; $('#voice-wrap').hidden = false; });
+  if(!live) $('#sfx-wrap').hidden = true;
+  /* a muted voice still plays at zero volume, so the pacing of the piece never changes */
+  function voiceHere(){ return hasAudio && idx < CLIPS; }
+  function setVoiceVol(v){ voiceVol = v; clips.forEach(function(a){ a.volume = v; }); }
+  function stopClips(){ clearTimeout(leadT); clips.forEach(function(a){ try { a.pause(); a.currentTime = 0; } catch(e){} }); }
+  function playClip(){
+    if(!voiceHere()) return;
+    var p = clips[idx].play();
+    if(p && p.catch) p.catch(function(){});
+  }
+  function lead(i){ return i === 0 ? 1.8 : 0.35; }  /* the picture leads, the voice follows */
+  function queueClip(){
+    clearTimeout(leadT);
+    var t = token;
+    leadT = setTimeout(function(){ if(t === token && (playing || !live)) playClip(); }, lead(idx) * 1000);
+  }
+  document.addEventListener('pointerdown', function(){ started = true; }, true);
+  document.addEventListener('keydown', function(){ started = true; }, true);
+
+  /* ---------- Sound design: every sound is synthesised and tied to something moving on screen ---------- */
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var ctx = null, sfxBus = null, sceneBus = null, noiseBuf = null;
+  function audioReady(){
+    if(!AC) return false;
+    try {
+      if(!ctx){
+        ctx = new AC();
+        sfxBus = ctx.createGain(); sfxBus.gain.value = 0; sfxBus.connect(ctx.destination);
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+        var ch = noiseBuf.getChannelData(0);
+        for(var i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+      }
+      if(ctx.state === 'suspended') ctx.resume();
+      return true;
+    } catch(e){ return false; }
+  }
+  function sfxOn(){ return live && started && playing && audioReady(); }
+  function syncSfx(){
+    if(!ctx) return;
+    var duck = (voiceHere() && voiceVol > 0.05) ? 0.75 : 1;                      /* sits under the voice */
+    var level = (playing || ended) ? sfxVol * 1.6 * duck : 0;
+    try { sfxBus.gain.setTargetAtTime(level, ctx.currentTime, 0.06); } catch(e){}
+  }
+  function newSceneBus(){
+    if(sceneBus){ try { sceneBus.gain.setTargetAtTime(0, ctx.currentTime, 0.04); } catch(e){} }
+    sceneBus = ctx.createGain(); sceneBus.connect(sfxBus);
+  }
+  function tone(at, f0, f1, len, vol, type){
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f1, at + len);
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    o.connect(g); g.connect(sceneBus); o.start(at); o.stop(at + len + 0.05);
+  }
+  function noise(at, f0, f1, len, vol, q){
+    var s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = q || 1.2;
+    f.frequency.setValueAtTime(f0, at); f.frequency.exponentialRampToValueAtTime(f1, at + len);
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + len * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    s.connect(f); f.connect(g); g.connect(sceneBus); s.start(at); s.stop(at + len + 0.05);
+  }
+  function pad(at, notes, attack, release, vol){
+    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200; lp.connect(sceneBus);
+    notes.forEach(function(f, k){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = k % 2 ? 'triangle' : 'sine'; o.frequency.value = f; o.detune.value = (k - 1.5) * 5;
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + attack); g.gain.linearRampToValueAtTime(0.0001, at + attack + release);
+      o.connect(g); g.connect(lp); o.start(at); o.stop(at + attack + release + 0.1);
+    });
+  }
+  var SFX = {
+    pop:     function(at, i){ tone(at, 520 + (i % 8) * 24, 340, 0.09, 0.09); },                       /* something lands or blooms */
+    tok:     function(at, i){ tone(at, 290 + (i % 5) * 18, 200, 0.12, 0.09, 'triangle'); },           /* a block or a word arrives */
+    step:    function(at, i){ var f = [392, 349.2, 311.1, 261.6][i % 4]; tone(at, f, f * 0.82, 0.2, 0.10, 'triangle'); },  /* each why goes deeper */
+    type:    function(at, i){ tone(at, 1500 - (i % 3) * 120, 1000, 0.035, 0.035, 'triangle'); },      /* a line of code */
+    tick:    function(at){ tone(at, 1150, 820, 0.04, 0.07, 'triangle'); },                            /* the clock */
+    chime:   function(at){ tone(at, 880, 878, 0.9, 0.06); tone(at + 0.02, 1320, 1318, 0.7, 0.035); }, /* the real need, found */
+    swish:   function(at){ noise(at, 700, 2600, 0.4, 0.045); },                                       /* the highlighter */
+    scratch: function(at){ noise(at, 2600, 1300, 0.14, 0.06, 3); },                                   /* striking out the stamp */
+    whoosh:  function(at){ noise(at, 260, 900, 0.34, 0.022, 0.8); },                                  /* scene change */
+    fall:    function(at){ tone(at, 420, 210, 0.7, 0.05); },                                          /* features going unused */
+    swell:   function(at){ pad(at, [174.61, 261.63, 329.63, 440.00], 1.6, 3.2, 0.03); },              /* easing in */
+    outro:   function(at){ pad(at, [196.00, 293.66, 392.00, 493.88, 587.33], 1.4, 6.5, 0.04); tone(at + 1.2, 1174.7, 1172, 1.4, 0.03); }  /* easing out */
+  };
+
+  var fills = scenes.map(function(s, i){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Go to scene ' + (i + 1) + ': ' + s.getAttribute('data-name'));
+    b.innerHTML = '<i><b></b></i>';
+    b.addEventListener('click', function(){ fresh = false; go(i); });
+    segs.appendChild(b);
+    return b.querySelector('b');
+  });
+
+  /* The opening clock ticks up to 08:00, then the highlighter arrives */
+  function clock(el, sfx){
+    var seq = ['07:57', '07:58', '07:59', '08:00'], t = token;
+    el.classList.remove('on-hl'); el.textContent = seq[0];
+    anim(el, { opacity: [0, 1] }, { delay: 0.3, duration: 0.4 });
+    seq.forEach(function(txt, k){
+      var at = 0.7 + k * 0.5;
+      setTimeout(function(){
+        if(t !== token) return;
+        el.textContent = txt;
+        if(k === seq.length - 1) anim(el, { scale: [1.2, 1] }, { type: 'spring', stiffness: 300, damping: 13 });
+      }, at * 1000);
+      if(k > 0) sfx(k === seq.length - 1 ? 'chime' : 'tick', at);
+    });
+    setTimeout(function(){ if(t === token) el.classList.add('on-hl'); }, 2600);
+  }
+
+  function enter(scene){
+    scene.classList.remove('on'); void scene.offsetWidth; scene.classList.add('on');
+    if(!live) return;
+    var armed = sfxOn(), fromCover = introBus;
+    introBus = false;
+    if(armed){ if(!fromCover) newSceneBus(); syncSfx(); }   /* the cover's opening swell carries on into scene one */
+    function sfx(name, d, i){ if(armed && SFX[name]){ try { SFX[name](ctx.currentTime + d, i || 0); } catch(e){} } }
+
+    var first = scene === scenes[0], last = scene.classList.contains('finale'), slow = first || last;
+    var base = last ? 1.0 : (first ? 0.3 : 0);
+
+    if(!first) sfx('whoosh', 0); else if(!fromCover){ sfx('swish', 0.05); sfx('swell', 0.1); }
+    if(last){
+      /* the meadow takes over the whole screen, then the dog runs through it */
+      anim(scene, { clipPath: ['circle(0% at 82% 78%)', 'circle(170% at 82% 78%)'] }, { duration: 1.4, ease: ease });
+      anim($('#run'), { left: ['-18%', '104%'] }, { duration: 6.5, delay: 1.6, ease: 'linear' });
+      sfx('swish', 0.05); sfx('outro', 0.5);
+    }
+
+    var words = $$('.words .w', scene);
+    if(words.length){
+      anim(words, { opacity: [0, 1], y: [30, 0] }, { duration: 0.85, delay: M.stagger(0.16, { startDelay: base }), ease: ease });
+      var ws = $('.words', scene).getAttribute('data-s');
+      if(ws) words.forEach(function(w, k){ sfx(ws, base + k * 0.16, k); });
+    }
+    anim($$('.copy > *:not(.words)', scene), { opacity: [0, 1], y: [20, 0] },
+      { duration: slow ? 0.9 : 0.6, delay: M.stagger(slow ? 0.2 : 0.1, { startDelay: base + words.length * 0.16 }), ease: ease });
+
+    var step = Number(scene.getAttribute('data-step')) || 0.14, counts = {};
+    $$('[data-a]', scene).forEach(function(el, i){
+      var kind = el.getAttribute('data-a');
+      var d = el.hasAttribute('data-d') ? Number(el.getAttribute('data-d')) : 0.5 + i * step;
+      if(kind === 'clock'){ clock(el, sfx); return; }
+      if(kind === 'popdim') anim(el, { opacity: [0, 1, 1, 0.22], scale: [0.6, 1, 1, 1] }, { delay: d, duration: 3, times: [0, 0.15, 0.75, 1], ease: 'easeOut' });
+      if(kind === 'pop')  anim(el, { opacity: [0, 1], scale: [0.5, 1] }, { delay: d, type: 'spring', stiffness: 320, damping: 17 });
+      if(kind === 'rise') anim(el, { opacity: [0, 1], y: [18, 0] }, { delay: d, duration: 0.55, ease: ease });
+      if(kind === 'fade') anim(el, { opacity: [0, 1] }, { delay: d, duration: 0.5 });
+      if(kind === 'grow') anim(el, { scaleX: [0, 1] }, { delay: d, duration: 0.8, ease: ease });
+      var s = el.getAttribute('data-s') || ({ pop: 'pop', popdim: 'pop', rise: 'tok', grow: 'swish' })[kind];
+      if(s && s !== 'none'){ counts[s] = counts[s] || 0; sfx(s, d, counts[s]++); }
+    });
+    $$('.mark, .hl', scene).forEach(function(el){
+      var v = parseFloat(el.style.getPropertyValue('--d'));
+      sfx('swish', isFinite(v) ? v : 0.9);
+    });
+    if($('.stamp', scene)) sfx('scratch', 3.1);
+    if($('.unused', scene)) sfx('fall', 3.6);
+    $$('[data-count]', scene).forEach(function(el){
+      var to = Number(el.getAttribute('data-count'));
+      anim(0, to, { duration: 1.1, delay: 0.3, ease: 'easeOut', onUpdate: function(v){ el.textContent = Math.round(v); } });
+    });
+  }
+
+  function startTimer(){
+    if(!live){ fills[idx].style.transform = 'scaleX(1)'; return; }
+    var t = token, dur = Number(scenes[idx].getAttribute('data-dur')) || 8, clip = idx < CLIPS ? clips[idx] : null;
+    /* with narration, every scene ends the same short beat after its line, so the gaps feel even */
+    if(clip && voiceHere() && isFinite(clip.duration)) dur = Math.max(minFor(scenes[idx]), lead(idx) + clip.duration + 0.4);
+    timer = M.animate(fills[idx], { scaleX: [0, 1] }, { duration: dur, ease: 'linear' });
+    if(!playing) timer.pause();
+    function advance(){
+      if(t !== token || !playing) return;
+      if(idx < n - 1) go(idx + 1); else { ended = true; setPlaying(false); }
+    }
+    timer.then(function(){
+      if(t !== token || !playing) return;
+      /* never cut a line of narration short */
+      if(clip && voiceHere() && !clip.paused && !clip.ended) clip.addEventListener('ended', advance, { once: true });
+      else advance();
+    });
+  }
+
+  /* the shortest a scene may run: long enough for its last animation to land */
+  function minFor(scene){
+    var m = 0;
+    $$('[data-d]', scene).forEach(function(el){ m = Math.max(m, Number(el.getAttribute('data-d')) || 0); });
+    return m + 1.2;
+  }
+
+  var outAnim = null, outT = null;
+  function go(i){
+    i = Math.max(0, Math.min(n - 1, i));
+    if(coverUp) leaveCover(false);
+    var from = idx, old = from >= 0 ? scenes[from] : null;
+    token += 1; ended = false;
+    if(timer){ try { timer.cancel(); } catch(e){} timer = null; }
+    if(outAnim){ try { outAnim.cancel(); } catch(e){} outAnim = null; }
+    clearTimeout(outT);
+    stopClips();
+    idx = i;
+    fills.forEach(function(f, k){ f.style.transform = 'scaleX(' + (k < i ? 1 : 0) + ')'; });
+    var phase = scenes[i].getAttribute('data-phase');
+    $('#chapter').textContent = (phase ? phase + ' · ' : '') + scenes[i].getAttribute('data-name');
+    back.disabled = i === 0; next.disabled = i === n - 1;
+    var t = token;
+    function show(){
+      if(t !== token) return;
+      scenes.forEach(function(s, k){ s.hidden = k !== i; s.style.opacity = ''; s.style.transform = ''; });
+      $('#stage').scrollTop = 0;
+      enter(scenes[i]);
+      startTimer();
+      if(started && (playing || !live)) queueClip();
+      syncSfx();
+    }
+    /* the outgoing scene lifts away before the next one arrives, so there is never a hard cut */
+    if(live && old && from !== i && !old.hidden){
+      outAnim = anim(old, { opacity: [1, 0], y: [0, -14] }, { duration: 0.28, ease: 'easeIn' });
+      outT = setTimeout(show, 300);
+    } else show();
+  }
+
+  function setPlaying(p){
+    playing = p;
+    player.classList.toggle('playing', p);
+    play.textContent = p ? 'Pause' : (ended ? 'Replay' : 'Play');
+    if(timer){ try { p ? timer.play() : timer.pause(); } catch(e){} }
+    if(p) playClip(); else { clearTimeout(leadT); if(idx < CLIPS){ try { clips[idx].pause(); } catch(e){} } }
+    syncSfx();
+  }
+  function restart(){
+    if(idle){ try { idle.cancel(); } catch(e){} idle = null; }
+    fresh = false; playing = true; play.textContent = 'Pause';
+    player.classList.add('playing');
+    go(0);
+  }
+
+  play.addEventListener('click', function(){
+    if(coverUp){
+      if(live){ leaveCover(true); } else { go(0); }
+      return;
+    }
+    if(ended || (fresh && idx === 0)){ restart(); return; }
+    if(idle){ try { idle.cancel(); } catch(e){} idle = null; }
+    fresh = false;
+    setPlaying(!playing);
+  });
+  if(again) again.addEventListener('click', restart);
+  back.addEventListener('click', function(){ fresh = false; go(idx - 1); });
+  next.addEventListener('click', function(){ fresh = false; go(idx + 1); });
+  document.addEventListener('keydown', function(e){
+    if(e.target && e.target.tagName === 'INPUT') return;
+    if(e.key === 'ArrowRight'){ fresh = false; go(idx + 1); }
+    else if(e.key === 'ArrowLeft'){ fresh = false; go(idx - 1); }
+    else if(e.key === ' ' && live && !(e.target && e.target.closest && e.target.closest('button, a'))){ e.preventDefault(); play.click(); }
+  });
+
+  /* Volume sliders: drag to zero to mute. The choice is remembered on this device. */
+  function save(k, v){ try { localStorage.setItem(k, String(v)); } catch(e){} }
+  function load(k){ try { var v = parseFloat(localStorage.getItem(k)); return isFinite(v) && v >= 0 && v <= 100 ? v : null; } catch(e){ return null; } }
+  var sv = load('vol-voice-2'), ss = load('vol-sound-2');
+  if(sv !== null) voiceIn.value = sv;
+  if(ss !== null) sfxIn.value = ss;
+  setVoiceVol(Number(voiceIn.value) / 100);
+  sfxVol = Number(sfxIn.value) / 100;
+  voiceIn.addEventListener('input', function(){ setVoiceVol(Number(voiceIn.value) / 100); save('vol-voice-2', voiceIn.value); syncSfx(); });
+  sfxIn.addEventListener('input', function(){ sfxVol = Number(sfxIn.value) / 100; save('vol-sound-2', sfxIn.value); syncSfx(); });
+
+  /* Swipe left or right to change scene on touch screens */
+  var stageEl = $('#stage'), sx = null, sy = null;
+  stageEl.addEventListener('touchstart', function(e){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  stageEl.addEventListener('touchend', function(e){
+    if(sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5){ fresh = false; go(idx + (dx < 0 ? 1 : -1)); }
+  }, { passive: true });
+
+  /* ---------- The cover: the story opens out of the meadow it will return to ---------- */
+  var cover = $('#cover'), begin = $('#begin'), coverUp = true, introBus = false;
+  function coverIn(){
+    /* unhurried: the title settles, then the line, then the meadow fills in around it */
+    anim($$('.words .w', cover), { opacity: [0, 1], y: [34, 0] }, { duration: 1.3, delay: M.stagger(0.38, { startDelay: 0.6 }), ease: ease });
+    anim($$('.copy > *:not(.words)', cover), { opacity: [0, 1], y: [20, 0] }, { duration: 1.2, delay: M.stagger(0.5, { startDelay: 2.0 }), ease: ease });
+    $$('.d', cover).forEach(function(el, k){
+      anim(el, { opacity: [0, 1], scale: [0.5, 1] }, { delay: 1.2 + k * 0.28, type: 'spring', stiffness: 200, damping: 16 });
+    });
+    anim($('#run-in'), { left: ['-18%', '62%'] }, { duration: 4.2, delay: 1.6, ease: 'easeOut' });
+    /* while it waits, the button breathes so the opening frame is never frozen */
+    idle = anim(begin, { scale: [1, 1.05, 1] }, { duration: 2.2, delay: 5.5, repeat: Infinity, ease: 'easeInOut' });
+  }
+  function leaveCover(animated){
+    if(!coverUp) return;
+    coverUp = false;
+    if(idle){ try { idle.cancel(); } catch(e){} idle = null; }
+    if(live && animated){
+      /* the meadow closes to a point and the dog runs off, revealing the first scene underneath */
+      var t = token;
+      playing = true; play.textContent = 'Pause'; player.classList.add('playing');
+      if(started && audioReady()){
+        newSceneBus(); syncSfx();
+        try { SFX.swish(ctx.currentTime + 0.1); SFX.swell(ctx.currentTime + 0.3); introBus = true; } catch(e){}
+      }
+      anim($('#run-in'), { left: ['62%', '116%'] }, { duration: 1.6, ease: 'easeIn' });
+      anim(cover, { clipPath: ['circle(170% at 82% 78%)', 'circle(0% at 82% 78%)'] }, { duration: 2.6, delay: 0.9, ease: [0.6, 0, 0.3, 1] });
+      /* the first scene only starts once the meadow is well on its way out */
+      setTimeout(function(){ if(t !== token) return; if(playing) restart(); else go(0); }, 2300);
+      setTimeout(function(){ cover.hidden = true; }, 3600);
+    } else cover.hidden = true;
+  }
+  begin.addEventListener('click', function(){ play.click(); });
+  scenes.forEach(function(s){ s.hidden = true; });
+  back.disabled = true;
+  $('#chapter').textContent = 'press play';
+  if(live) coverIn();
+})();
+</script>
+</body>
+</html>

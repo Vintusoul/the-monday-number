@@ -111,8 +111,13 @@ p,h1,h2,ol,ul{margin:0}
 .finale .copy .src,.finale .copy .src a{color:var(--hl-ink)}
 .finale .btn{color:var(--hl-ink);border-color:var(--hl-ink)}
 .finale .btn:hover:not(:disabled){background:var(--hl-ink);color:var(--hl)}
+.finale .next{display:flex;flex-wrap:wrap;gap:.6rem}
+.finale a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.finale .btn.solid{background:var(--hl-ink);color:var(--hl)}
+.finale .btn.solid:hover{background:var(--bg);border-color:var(--bg);color:var(--ink)}
 .bloom{position:absolute;inset:0;pointer-events:none}
 .bloom .d{position:absolute;overflow:visible;transform:translate(-50%,-50%)}
+@media (max-width:520px){ .bloom .d.side{display:none} }
 .bloom .run{position:absolute;left:62%;bottom:5%;width:clamp(84px,12vw,132px);overflow:visible}
 /* Cover: the story opens out of the same meadow it returns to */
 .cover{position:relative;z-index:2;overflow:hidden;margin:.5rem 0;display:grid;align-content:center;background:var(--hl);color:var(--hl-ink);border-radius:14px;padding:clamp(1.5rem,5vw,4.5rem);padding-bottom:clamp(5rem,14vh,8rem)}
@@ -384,7 +389,11 @@ p,h1,h2,ol,ul{margin:0}
       <div class="copy">
         <h2 class="words" data-s="tok">Understanding people is still the job.</h2>
         <p class="sign">Christelle Zeederberg, product engineer</p>
-        <div><button type="button" class="btn" id="again">Watch again</button></div>
+        <div class="next">
+          <a class="btn solid" href="https://vintusoul.github.io/portfolio/" target="_blank" rel="noopener">See my portfolio</a>
+          <a class="btn" href="https://github.com/Vintusoul" target="_blank" rel="noopener">GitHub</a>
+          <button type="button" class="btn" id="again">Watch again</button>
+        </div>
         <p class="src">The case is illustrative. The statistics are real:
           <a href="https://www.pendo.io/resources/the-2019-feature-adoption-report/" target="_blank" rel="noopener">Pendo 2019</a>,
           <a href="https://www.bcg.com/press/24october2024-ai-adoption-in-2024-74-of-companies-struggle-to-achieve-and-scale-value" target="_blank" rel="noopener">BCG 2024</a>,
@@ -443,32 +452,69 @@ p,h1,h2,ol,ul{margin:0}
   $$('.bloom').forEach(function(bloom){
   [[6,86,26],[16,94,18],[27,85,32],[38,93,20],[49,87,28],[60,94,18],[71,84,36],[81,92,22],[91,85,30],[96,70,22],[87,66,32],[94,52,22]].forEach(function(d, k){
     var s = document.createElement('div');
-    s.className = 'd'; s.innerHTML = DAISY;
+    s.className = 'd' + (d[1] < 80 ? ' side' : ''); s.innerHTML = DAISY;
     s.style.cssText = 'left:' + d[0] + '%;top:' + d[1] + '%;width:' + d[2] + 'px;height:' + d[2] + 'px';
     s.setAttribute('data-a', 'pop'); s.setAttribute('data-d', (1.3 + k * 0.11).toFixed(2));
     bloom.insertBefore(s, bloom.firstChild);
   });
   });
 
-  /* ---------- Narration: one clip per scene in audio/s01.mp3 to s10.mp3; silent if missing ---------- */
+  /* ---------- Narration: one clip per scene in audio/s01.mp3 to s10.mp3; silent if missing ----------
+     Clips are decoded and played through the Web Audio engine, not <audio> elements. Phones ignore
+     volume changes on <audio> and only let it start from a tap, which broke the slider and the timing. */
   var voiceIn = $('#voice'), sfxIn = $('#sfx'), voiceVol = 0.4, sfxVol = 1, hasAudio = false;
-  var clips = [];
-  for(var c = 0; c < CLIPS; c++){
-    var a = new Audio();
-    a.preload = 'auto';
-    a.src = 'audio/s' + (c < 9 ? '0' : '') + (c + 1) + '.mp3';
-    clips.push(a);
+  var rawP = [], bufP = [], bufs = [], cur = null, voiceOffset = 0, onVoiceEnd = null, voiceGain = null;
+  function getClip(c){
+    try {
+      return fetch('audio/s' + (c < 9 ? '0' : '') + (c + 1) + '.mp3').then(function(r){
+        if(!r.ok) throw new Error('missing clip');
+        return r.arrayBuffer();
+      });
+    } catch(e){ return Promise.reject(e); }
   }
-  clips[0].addEventListener('loadedmetadata', function(){ hasAudio = true; $('#voice-wrap').hidden = false; });
+  for(var c = 0; c < CLIPS; c++){ rawP.push(getClip(c)); rawP[c].catch(function(){}); }
+  rawP[0].then(function(){ hasAudio = true; $('#voice-wrap').hidden = false; }, function(){});
   if(!live) $('#sfx-wrap').hidden = true;
   /* a muted voice still plays at zero volume, so the pacing of the piece never changes */
-  function voiceHere(){ return hasAudio && idx < CLIPS; }
-  function setVoiceVol(v){ voiceVol = v; clips.forEach(function(a){ a.volume = v; }); }
-  function stopClips(){ clearTimeout(leadT); clips.forEach(function(a){ try { a.pause(); a.currentTime = 0; } catch(e){} }); }
-  function playClip(){
-    if(!voiceHere()) return;
-    var p = clips[idx].play();
-    if(p && p.catch) p.catch(function(){});
+  function voiceHere(){ return hasAudio && idx >= 0 && idx < CLIPS; }
+  function setVoiceVol(v){
+    voiceVol = v;
+    if(voiceGain){ try { voiceGain.gain.setTargetAtTime(v, ctx.currentTime, 0.03); } catch(e){} }
+  }
+  function decode(i){
+    if(!bufP[i]) bufP[i] = rawP[i].then(function(ab){
+      return new Promise(function(res, rej){ ctx.decodeAudioData(ab.slice(0), function(b){ bufs[i] = b; res(b); }, rej); });
+    });
+    return bufP[i];
+  }
+  /* run cb once scene i's clip is decoded (straight away if there is nothing to wait for) */
+  function ready(i, cb){
+    if(i >= CLIPS || bufs[i] || !started || !audioReady()) return cb();
+    decode(i).then(function(){
+      for(var k = 0; k < CLIPS; k++) decode(k).catch(function(){});   /* warm the rest in the background */
+      cb();
+    }, cb);
+  }
+  function pauseVoice(){
+    if(!cur) return;
+    var c = cur; cur = null;
+    voiceOffset = ctx.currentTime - c.at;
+    try { c.src.onended = null; c.src.stop(); } catch(e){}
+  }
+  function stopClips(){ clearTimeout(leadT); onVoiceEnd = null; pauseVoice(); voiceOffset = 0; }
+  function playClip(){                       /* starts the scene's line, or resumes it where it was paused */
+    if(cur || !voiceHere() || !audioReady()) return;
+    var b = bufs[idx];
+    if(!b || voiceOffset >= b.duration - 0.02) return;
+    var src = ctx.createBufferSource(), c = { src: src, at: ctx.currentTime - voiceOffset };
+    src.buffer = b; src.connect(voiceGain);
+    src.onended = function(){
+      if(cur !== c) return;
+      cur = null; voiceOffset = b.duration;
+      if(onVoiceEnd){ var f = onVoiceEnd; onVoiceEnd = null; f(); }
+    };
+    cur = c;
+    src.start(0, voiceOffset);
   }
   function lead(i){ return i === 0 ? 1.8 : 0.35; }  /* the picture leads, the voice follows */
   function queueClip(){
@@ -476,8 +522,10 @@ p,h1,h2,ol,ul{margin:0}
     var t = token;
     leadT = setTimeout(function(){ if(t === token && (playing || !live)) playClip(); }, lead(idx) * 1000);
   }
+  /* any tap, click or key press unlocks sound: browsers only allow audio to start from a gesture */
+  function unlock(){ started = true; audioReady(); }
+  ['click', 'touchend', 'keydown'].forEach(function(ev){ document.addEventListener(ev, unlock, true); });
   document.addEventListener('pointerdown', function(){ started = true; }, true);
-  document.addEventListener('keydown', function(){ started = true; }, true);
 
   /* ---------- Sound design: every sound is synthesised and tied to something moving on screen ---------- */
   var AC = window.AudioContext || window.webkitAudioContext;
@@ -488,6 +536,9 @@ p,h1,h2,ol,ul{margin:0}
       if(!ctx){
         ctx = new AC();
         sfxBus = ctx.createGain(); sfxBus.gain.value = 0; sfxBus.connect(ctx.destination);
+        voiceGain = ctx.createGain(); voiceGain.gain.value = voiceVol; voiceGain.connect(ctx.destination);
+        /* on iPhone, keep playing when the ringer switch is set to silent */
+        try { if(navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
         noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
         var ch = noiseBuf.getChannelData(0);
         for(var i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
@@ -627,9 +678,9 @@ p,h1,h2,ol,ul{margin:0}
 
   function startTimer(){
     if(!live){ fills[idx].style.transform = 'scaleX(1)'; return; }
-    var t = token, dur = Number(scenes[idx].getAttribute('data-dur')) || 8, clip = idx < CLIPS ? clips[idx] : null;
+    var t = token, dur = Number(scenes[idx].getAttribute('data-dur')) || 8, buf = voiceHere() ? bufs[idx] : null;
     /* with narration, every scene ends the same short beat after its line, so the gaps feel even */
-    if(clip && voiceHere() && isFinite(clip.duration)) dur = Math.max(minFor(scenes[idx]), lead(idx) + clip.duration + 0.4);
+    if(buf) dur = Math.max(minFor(scenes[idx]), lead(idx) + buf.duration + 0.4);
     timer = M.animate(fills[idx], { scaleX: [0, 1] }, { duration: dur, ease: 'linear' });
     if(!playing) timer.pause();
     function advance(){
@@ -639,8 +690,7 @@ p,h1,h2,ol,ul{margin:0}
     timer.then(function(){
       if(t !== token || !playing) return;
       /* never cut a line of narration short */
-      if(clip && voiceHere() && !clip.paused && !clip.ended) clip.addEventListener('ended', advance, { once: true });
-      else advance();
+      if(cur) onVoiceEnd = advance; else advance();
     });
   }
 
@@ -672,9 +722,12 @@ p,h1,h2,ol,ul{margin:0}
       scenes.forEach(function(s, k){ s.hidden = k !== i; s.style.opacity = ''; s.style.transform = ''; });
       $('#stage').scrollTop = 0;
       enter(scenes[i]);
-      startTimer();
-      if(started && (playing || !live)) queueClip();
-      syncSfx();
+      ready(i, function(){
+        if(t !== token) return;
+        startTimer();
+        if(started && (playing || !live)) queueClip();
+        syncSfx();
+      });
     }
     /* the outgoing scene lifts away before the next one arrives, so there is never a hard cut */
     if(live && old && from !== i && !old.hidden){
@@ -688,7 +741,7 @@ p,h1,h2,ol,ul{margin:0}
     player.classList.toggle('playing', p);
     play.textContent = p ? 'Pause' : (ended ? 'Replay' : 'Play');
     if(timer){ try { p ? timer.play() : timer.pause(); } catch(e){} }
-    if(p) playClip(); else { clearTimeout(leadT); if(idx < CLIPS){ try { clips[idx].pause(); } catch(e){} } }
+    if(p) playClip(); else { clearTimeout(leadT); pauseVoice(); }
     syncSfx();
   }
   function restart(){
@@ -776,6 +829,7 @@ p,h1,h2,ol,ul{margin:0}
   back.disabled = true;
   $('#chapter').textContent = 'press play';
   if(live) coverIn();
+  window.__player = function(){ return { audio: ctx ? ctx.state : 'none', decoded: bufs.filter(Boolean).length, speaking: !!cur, offset: Math.round(voiceOffset * 100) / 100, scene: idx, voiceGain: voiceGain ? voiceGain.gain.value : null }; };
 })();
 </script>
 </body>
